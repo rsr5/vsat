@@ -1,0 +1,15 @@
+.vagrant
+chefcfg/*
+*.rpm
+*.swp
+.ropeproject
+*.pyc
+*.pem
+.tox
+.vagrant
+*egg*
+build
+id_rsa*
+id_dsa*
+autochef_databag_key
+unencrypted*
