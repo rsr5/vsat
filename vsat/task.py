@@ -5,10 +5,109 @@
 # pylint: disable=W0142
 
 
+import uuid
 import json
+
+from os import remove
+from os.path import join, exists
 
 # Will be used to store tasks as they are registered.
 TASK_REGISTRY = {}
+
+RESULT_LOCATION = "/tmp/"
+
+
+class NotReady(Exception):
+    """
+    Raised if a result it not ready yet.
+    """
+
+
+class InvalidTask(Exception):
+    """
+    Raised if a there us no current task for a particular uuid.
+    """
+
+
+class AsyncResult(object):
+    """
+    Contains the promise of a result from Task once it is executed.
+    """
+    def __init__(self, task_uuid=None):
+        """
+        Creates a new result.
+        """
+        self.task_uuid = str(uuid.uuid4()) if task_uuid is None else task_uuid
+        self.state = "QUEUED"
+
+        if task_uuid is None:
+            self._save_state("task_uuid", self.task_uuid)
+            self._save_state("state", self.state)
+            self._save_state("result", None)
+        else:
+            if not exists(self.path):
+                raise InvalidTask()
+
+    @property
+    def path(self):
+        """
+        Returns the path for this results state.
+        """
+        return join(RESULT_LOCATION, str(self.task_uuid))
+
+    def _load_state(self):
+        """
+        Returns a dictionary containing this results state.
+        """
+        state = {}
+
+        if exists(self.path):
+            with open(self.path, "r") as state_file:
+                state = json.loads(state_file.read())
+    
+        return state
+
+    def _save_state(self, key, value):
+        """
+        Returns a dictionary containing this results state.
+        """
+        state = self._load_state()
+        state[key] = value
+
+        with open(self.path, "w+") as state_file:
+            state_file.write(json.dumps(state))
+
+    def set_state(self, state):
+        """
+        Sets the state of the remote task.
+        """
+        self._save_state("state", state)
+
+    def set_result(self, result):
+        """
+        Sets the result of the remote task.
+        """
+        self._save_state("result", result)
+        self._save_state("state", "FINISHED")
+
+    def get_result(self):
+        """
+        Attempts to get the result, an exception is raises if it is not
+        ready.
+        """
+        if self._load_state()['state'] != "FINISHED":
+            raise NotReady()
+
+        state = self._load_state()
+        remove(self.path)
+
+        return state['result']
+
+    def get_state(self):
+        """
+        Returns the state of the task.
+        """
+        return self._load_state()['state']
 
 
 class Task(object):
@@ -36,6 +135,12 @@ class Task(object):
     def apply(self, *args, **kwargs):
         """
         Applies the task locally.
+        """
+        return self.run['func'](*args, **kwargs)
+
+    def apply_async(self, *args, **kwargs):
+        """
+        Applies the task remotely and returns an AsyncResult object.
         """
         return self.run['func'](*args, **kwargs)
 
