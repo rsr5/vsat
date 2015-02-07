@@ -67,13 +67,12 @@ class AsyncResult(object):
         return result
 
     @classmethod
-    def get(cls, result_json):
+    def get(cls, task_uuid):
         """
-        Gets and existing result
+        Gets an existing result
         """
-        result_json_parsed = json.loads(result_json)
         result = cls()
-        result.task_uuid = result_json_parsed['task_uuid']
+        result.task_uuid = task_uuid
 
         if not exists(result.path):
             raise InvalidTask()
