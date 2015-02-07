@@ -11,5 +11,4 @@ chefcfg/*
 build
 id_rsa*
 id_dsa*
-autochef_databag_key
 unencrypted*
