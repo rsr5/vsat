@@ -10,6 +10,12 @@ LOG = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 30
 
 
+class PoolNotInitialised(Exception):
+    """
+    Raised when the worker pool has not been created yet.
+    """
+
+
 def _process(queue):
     """
     Executes the tasks for a worker.
@@ -27,6 +33,8 @@ class WorkerPool(object):
     """
     Looks after the pool of workers.
     """
+    WORKER_POOL = None
+
     def __init__(self, num_workers=1):
         """
         Creates a WorkerPool.
@@ -36,6 +44,24 @@ class WorkerPool(object):
 
         for _ in xrange(num_workers):
             self.workers.append(Process(target=_process, args=(self.queue, )))
+
+    @classmethod
+    def init(cls, num_workers=1):
+        """
+        Starts THE worker pool.
+        """
+        cls.WORKER_POOL = cls(num_workers=num_workers)
+        return cls.WORKER_POOL
+
+    @classmethod
+    def get(cls):
+        """
+        Returns a handle to THE worker pool.
+        """
+        if cls.WORKER_POOL is None:
+            raise PoolNotInitialised()
+
+        return cls.WORKER_POOL
 
     def start(self):
         """
