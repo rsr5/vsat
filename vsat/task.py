@@ -87,9 +87,7 @@ def task_from_func(func, **options):
             'name': name,
             'run': {'func': func},
             '__doc__': func.__doc__,
-            '__module__': func.__module__,
-            #'__header__': staticmethod(head_from_fun(fun, bound=bind)),
-            '__wrapped__': func}, **options))()
+            '__module__': func.__module__}, **options))()
         TASK_REGISTRY[name] = _task
 
     else:
