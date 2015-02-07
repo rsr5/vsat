@@ -2,6 +2,7 @@
 Contains the task worker that executes queued tasks.
 """
 import logging
+import json
 
 from multiprocessing import Process, Queue
 
@@ -38,7 +39,7 @@ class WorkerPool(object):
                 finished = True
 
             else:
-                result = cls.RESULT_CLASS.get(item)
+                result = cls.RESULT_CLASS.get(json.loads(item)['task_uuid'])
 
                 result.set_state("RUNNING")
 

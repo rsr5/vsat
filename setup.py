@@ -14,7 +14,7 @@ def read(fname):
 setup(
     name="vsat",
 
-    version="0.0.5",
+    version="0.0.6",
 
     author="Robin Ridler",
 
