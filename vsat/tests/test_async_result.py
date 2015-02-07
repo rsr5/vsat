@@ -10,13 +10,15 @@ def test_result_file_locally():
     """
     Tests that not passing a uuid creates a new result file.
     """
-    result = AsyncResult()
+    result = AsyncResult.create("atask", [], {})
+
+    assert result.task_name == "atask"
 
     assert join(RESULT_LOCATION, result.task_uuid) == result.path
 
     assert exists(result.path)
 
-    assert result.get_state() == "QUEUED"
+    assert result.get_state() == "CREATED"
 
     with pytest.raises(NotReady):
         result.get_result()

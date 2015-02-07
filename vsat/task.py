@@ -5,11 +5,15 @@
 # pylint: disable=W0142
 
 
+import time
 import uuid
 import json
 
 from os import remove
 from os.path import join, exists
+
+from vsat.worker import WorkerPool
+
 
 # Will be used to store tasks as they are registered.
 TASK_REGISTRY = {}
@@ -33,20 +37,54 @@ class AsyncResult(object):
     """
     Contains the promise of a result from Task once it is executed.
     """
-    def __init__(self, task_uuid=None):
-        """
-        Creates a new result.
-        """
-        self.task_uuid = str(uuid.uuid4()) if task_uuid is None else task_uuid
-        self.state = "QUEUED"
+    task_name = ""
+    task_uuid = ""
+    state = ""
+    result = ""
+    task_uuid = ""
+    args = []
+    kwargs = {}
 
-        if task_uuid is None:
-            self._save_state("task_uuid", self.task_uuid)
-            self._save_state("state", self.state)
-            self._save_state("result", None)
-        else:
-            if not exists(self.path):
-                raise InvalidTask()
+    @classmethod
+    def create(cls, task_name, args, kwargs):
+        """
+        Creates a new result
+        """
+        result = cls()
+        result.task_uuid = str(uuid.uuid4())
+        result.state = "CREATED"
+        result.task_name = task_name
+        result.args = args
+        result.kwargs = kwargs
+
+        result.save_state("task_name", result.task_name)
+        result.save_state("args", result.args)
+        result.save_state("kwargs", result.kwargs)
+        result.save_state("task_uuid", result.task_uuid)
+        result.save_state("state", result.state)
+        result.save_state("result", None)
+
+        return result
+
+    @classmethod
+    def get(cls, result_json):
+        """
+        Gets and existing result
+        """
+        result_json_parsed = json.loads(result_json)
+        result = cls()
+        result.task_uuid = result_json_parsed['task_uuid']
+
+        if not exists(result.path):
+            raise InvalidTask()
+
+        result.task_name = result.load_state()["task_name"]
+        result.args = result.load_state()["args"]
+        result.kwargs = result.load_state()["kwargs"]
+        result.state = result.load_state()["state"]
+        result.result = result.load_state()["result"]
+
+        return result
 
     @property
     def path(self):
@@ -55,7 +93,7 @@ class AsyncResult(object):
         """
         return join(RESULT_LOCATION, str(self.task_uuid))
 
-    def _load_state(self):
+    def load_state(self):
         """
         Returns a dictionary containing this results state.
         """
@@ -63,15 +101,16 @@ class AsyncResult(object):
 
         if exists(self.path):
             with open(self.path, "r") as state_file:
-                state = json.loads(state_file.read())
+                state_file_contents = state_file.read()
+                state = json.loads(state_file_contents)
     
         return state
 
-    def _save_state(self, key, value):
+    def save_state(self, key, value):
         """
-        Returns a dictionary containing this results state.
+        Persists an attributes value
         """
-        state = self._load_state()
+        state = self.load_state()
         state[key] = value
 
         with open(self.path, "w+") as state_file:
@@ -81,24 +120,28 @@ class AsyncResult(object):
         """
         Sets the state of the remote task.
         """
-        self._save_state("state", state)
+        self.save_state("state", state)
 
     def set_result(self, result):
         """
         Sets the result of the remote task.
         """
-        self._save_state("result", result)
-        self._save_state("state", "FINISHED")
+        self.save_state("result", result)
+        self.save_state("state", "FINISHED")
 
-    def get_result(self):
+    def get_result(self, block=False):
         """
         Attempts to get the result, an exception is raises if it is not
         ready.
         """
-        if self._load_state()['state'] != "FINISHED":
+        if block:
+            while self.get_state() != "FINISHED":
+                time.sleep(0.25)
+
+        if self.load_state()['state'] != "FINISHED":
             raise NotReady()
 
-        state = self._load_state()
+        state = self.load_state()
         remove(self.path)
 
         return state['result']
@@ -107,7 +150,21 @@ class AsyncResult(object):
         """
         Returns the state of the task.
         """
-        return self._load_state()['state']
+        return self.load_state()['state']
+
+    def to_json(self):
+        """
+        Returns this result as JSON
+        """
+        return json.dumps(self.load_state())
+
+    def get_task(self):
+        """
+        Returns the Task object associated with this result.
+        """
+        return TASK_REGISTRY[self.task_name]
+
+WorkerPool.set_result_class(AsyncResult)
 
 
 class Task(object):
@@ -115,22 +172,14 @@ class Task(object):
     A task that can be called asynchronously.
     """
     run = {"func": lambda: None}
-    name = "task"
-
-    def to_json(self):
-        """
-        Turns this task into JSON so that it may be queued for a worker.
-        """
-        return json.dumps({
-            "name": self.name
-        })
+    name = "base_task"
 
     @classmethod
-    def from_json(cls, task_json):
+    def get(cls, task_name):
         """
         Returns a Task object that maybe called by a worker.
         """
-        return TASK_REGISTRY[json.dumps(task_json)["name"]]
+        return TASK_REGISTRY[task_name]
 
     def apply(self, *args, **kwargs):
         """
@@ -142,7 +191,10 @@ class Task(object):
         """
         Applies the task remotely and returns an AsyncResult object.
         """
-        return self.run['func'](*args, **kwargs)
+        worker_pool = WorkerPool.get()
+        result = AsyncResult.create(self.name, args, kwargs)
+        worker_pool.schedule_task(result)
+        return result
 
     def __call__(self, *args, **kwargs):
         """

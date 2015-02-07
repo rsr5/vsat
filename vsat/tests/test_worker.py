@@ -25,8 +25,6 @@ def test_pool_creates_workers():
 
     assert len([w for w in worker_pool.workers if w.is_alive()]) == num_workers
 
-    worker_pool.schedule_task("Hello")
-
     worker_pool.stop()
 
     assert len([w

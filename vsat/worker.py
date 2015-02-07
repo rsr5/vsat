@@ -16,24 +16,35 @@ class PoolNotInitialised(Exception):
     """
 
 
-def _process(queue):
-    """
-    Executes the tasks for a worker.
-    """
-    finished = False
-    while not finished:
-        item = queue.get()
-        print item
-
-        if item == "stop":
-            finished = True
-
-
 class WorkerPool(object):
     """
     Looks after the pool of workers.
     """
     WORKER_POOL = None
+    RESULT_CLASS = None
+
+    @classmethod
+    def _process(cls, queue):
+        """
+        Executes the tasks for a worker.
+        """
+        finished = False
+
+        while not finished:
+
+            item = queue.get()
+
+            if item == "stop":
+                finished = True
+
+            else:
+                result = cls.RESULT_CLASS.get(item)
+
+                result.set_state("RUNNING")
+
+                ret_value = result.get_task()(*result.args, **result.kwargs)
+
+                result.set_result(ret_value)
 
     def __init__(self, num_workers=1):
         """
@@ -43,7 +54,8 @@ class WorkerPool(object):
         self.workers = []
 
         for _ in xrange(num_workers):
-            self.workers.append(Process(target=_process, args=(self.queue, )))
+            self.workers.append(Process(target=WorkerPool._process,
+                                        args=(self.queue, )))
 
     @classmethod
     def init(cls, num_workers=1):
@@ -52,6 +64,13 @@ class WorkerPool(object):
         """
         cls.WORKER_POOL = cls(num_workers=num_workers)
         return cls.WORKER_POOL
+
+    @classmethod
+    def set_result_class(cls, result_class):
+        """
+        Links AsyncResult
+        """
+        cls.RESULT_CLASS = result_class
 
     @classmethod
     def get(cls):
@@ -82,8 +101,10 @@ class WorkerPool(object):
         for worker in self.workers:
             worker.join(timeout=timeout)
 
-    def schedule_task(self, task):
+        WorkerPool.WORKER_POOL = None
+
+    def schedule_task(self, result):
         """
         Queues a Task to be executed by a Worker.
         """
-        pass
+        self.queue.put(result.to_json())
