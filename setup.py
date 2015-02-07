@@ -26,7 +26,7 @@ setup(
 
     keywords="Simple Asynchronous Tasks",
 
-    url="http://",
+    url="https://github.com/rsr5/vsat",
 
     packages=['vsat'],
     long_description=read('README.md'),
