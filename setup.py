@@ -14,13 +14,13 @@ def read(fname):
 setup(
     name="vsat",
 
-    version=read("VERSION"),
+    version="0.0.4",
 
     author="Robin Ridler",
 
     author_email="robin.ridler@gmail.com",
 
-    description=("Very simple asynchrous tasks for Python."),
+    description=("Very simple asynchronous tasks for Python."),
 
     license="BSD",
 
@@ -29,7 +29,7 @@ setup(
     url="https://github.com/rsr5/vsat",
 
     packages=['vsat'],
-    long_description=read('README.md'),
+    long_description=read('README.rst'),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Utilities",
