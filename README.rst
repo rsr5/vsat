@@ -4,9 +4,12 @@ Very Simple Asynchronous Tasks
 
 A small library that allows asynchronous tasks to be executed.  Useful for
 web applications when you need a task to run in the background.  The API
-is modelled loosely on Celery_.
+is modelled loosely on Celery_.  The library makes use of the Python
+multiprocessing_ library to run tasks in the background.
 
 .. _Celery: https://github.com/celery/celery
+
+.. _multiprocessing: https://docs.python.org/2/library/multiprocessing.html
 
 Example
 -------
