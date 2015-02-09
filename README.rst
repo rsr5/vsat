@@ -1,8 +1,12 @@
+
 Very Simple Asynchronous Tasks
 ------------------------------
 
 A small library that allows asynchronous tasks to be executed.  Useful for
-web applications when you need a task to run in the background.
+web applications when you need a task to run in the background.  The API
+is modelled loosely on Celery_.
+
+.. _Celery: https://github.com/celery/celery
 
 Example
 -------
@@ -34,4 +38,3 @@ Create and run task.
 
     In [7]: print result.get_result(block=True)
     4
-
