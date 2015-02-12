@@ -1,9 +1,15 @@
 """
 Contains the task worker that executes queued tasks.
 """
+
+# Disable a couple of Lint warnings here because we need to do a bit of
+# magic with exceptions
+# pylint: disable=W0703
+
 import logging
 import json
 
+from traceback import format_exc
 from multiprocessing import Process, Queue
 
 LOG = logging.getLogger(__name__)
@@ -43,9 +49,16 @@ class WorkerPool(object):
 
                 result.set_state("RUNNING")
 
-                ret_value = result.get_task()(*result.args, **result.kwargs)
+                task = result.get_task()
+                try:
+                    ret_value = task(*result.args, **result.kwargs)
+                except Exception:
+                    # Catch top level exception in order to capture the
+                    # error output.
+                    result.set_error(format_exc())
+                else:
+                    result.set_result(ret_value)
 
-                result.set_result(ret_value)
 
     def __init__(self, num_workers=1):
         """

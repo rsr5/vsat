@@ -128,6 +128,13 @@ class AsyncResult(object):
         self.save_state("result", result)
         self.save_state("state", "FINISHED")
 
+    def set_error(self, error):
+        """
+        Sets the error that the remote task raised.
+        """
+        self.save_state("result", error)
+        self.save_state("state", "ERROR")
+
     def get_result(self, block=False):
         """
         Attempts to get the result, an exception is raises if it is not
