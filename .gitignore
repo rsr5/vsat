@@ -12,3 +12,4 @@ build
 id_rsa*
 id_dsa*
 unencrypted*
+dist
