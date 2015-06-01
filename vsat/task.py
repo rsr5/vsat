@@ -141,10 +141,10 @@ class AsyncResult(object):
         ready.
         """
         if block:
-            while self.get_state() != "FINISHED":
+            while self.get_state() not in ["FINISHED", "ERROR"]:
                 time.sleep(0.25)
 
-        if self.load_state()['state'] != "FINISHED":
+        if self.load_state()['state'] not in ["FINISHED", "ERROR"]:
             raise NotReady()
 
         state = self.load_state()
